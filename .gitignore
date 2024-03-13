@@ -1,0 +1,5 @@
+# Remove all build files
+build/*
+
+# Remove all cache files
+.cache/*
