@@ -28,7 +28,7 @@ private:
   void onConnection(const TcpConnectionPtr &connection);
   // the callback for the message
   void onMessage(const TcpConnectionPtr &connection, Buffer *buffer,
-                 Timestamp timestamp);
+                 Timestamp time);
 
   TcpServer _server;
   EventLoop *_loop;

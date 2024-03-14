@@ -4,7 +4,7 @@ project(chat-server)
 
 # set cxx compile flags
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} -g)
 
@@ -15,6 +15,8 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_SOURCE_DIR}/include/server)
 include_directories(${PROJECT_SOURCE_DIR}/include/client)
+include_directories(${PROJECT_SOURCE_DIR}/include/tools)
+include_directories(${PROJECT_SOURCE_DIR}/thirdpart)
 
 # load subdirectory
 add_subdirectory(src)
