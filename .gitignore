@@ -3,3 +3,5 @@ build/*
 
 # Remove all cache files
 .cache/*
+
+.vscode/*
