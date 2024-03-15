@@ -1,0 +1,32 @@
+[
+{
+  "directory": "/home/kirito/projects/cluster-chat-server/cmake/build/src",
+  "command": "/usr/bin/g++  -I/home/kirito/projects/cluster-chat-server/include -I/home/kirito/projects/cluster-chat-server/include/server -I/home/kirito/projects/cluster-chat-server/include/client -I/home/kirito/projects/cluster-chat-server/include/tools -I/home/kirito/projects/cluster-chat-server/thirdpart -g -g -std=gnu++17 -o CMakeFiles/tools.dir/tools/database.cpp.o -c /home/kirito/projects/cluster-chat-server/src/tools/database.cpp",
+  "file": "/home/kirito/projects/cluster-chat-server/src/tools/database.cpp"
+},
+{
+  "directory": "/home/kirito/projects/cluster-chat-server/cmake/build/src",
+  "command": "/usr/bin/g++  -I/home/kirito/projects/cluster-chat-server/include -I/home/kirito/projects/cluster-chat-server/include/server -I/home/kirito/projects/cluster-chat-server/include/client -I/home/kirito/projects/cluster-chat-server/include/tools -I/home/kirito/projects/cluster-chat-server/thirdpart -g -g -std=gnu++17 -o CMakeFiles/tools.dir/tools/public.cpp.o -c /home/kirito/projects/cluster-chat-server/src/tools/public.cpp",
+  "file": "/home/kirito/projects/cluster-chat-server/src/tools/public.cpp"
+},
+{
+  "directory": "/home/kirito/projects/cluster-chat-server/cmake/build/src/server",
+  "command": "/usr/bin/g++  -I/home/kirito/projects/cluster-chat-server/include -I/home/kirito/projects/cluster-chat-server/include/server -I/home/kirito/projects/cluster-chat-server/include/client -I/home/kirito/projects/cluster-chat-server/include/tools -I/home/kirito/projects/cluster-chat-server/thirdpart -g -g -std=gnu++17 -o CMakeFiles/chatserver.dir/chatserver.cpp.o -c /home/kirito/projects/cluster-chat-server/src/server/chatserver.cpp",
+  "file": "/home/kirito/projects/cluster-chat-server/src/server/chatserver.cpp"
+},
+{
+  "directory": "/home/kirito/projects/cluster-chat-server/cmake/build/src/server",
+  "command": "/usr/bin/g++  -I/home/kirito/projects/cluster-chat-server/include -I/home/kirito/projects/cluster-chat-server/include/server -I/home/kirito/projects/cluster-chat-server/include/client -I/home/kirito/projects/cluster-chat-server/include/tools -I/home/kirito/projects/cluster-chat-server/thirdpart -g -g -std=gnu++17 -o CMakeFiles/chatserver.dir/chatservices.cpp.o -c /home/kirito/projects/cluster-chat-server/src/server/chatservices.cpp",
+  "file": "/home/kirito/projects/cluster-chat-server/src/server/chatservices.cpp"
+},
+{
+  "directory": "/home/kirito/projects/cluster-chat-server/cmake/build/src/server",
+  "command": "/usr/bin/g++  -I/home/kirito/projects/cluster-chat-server/include -I/home/kirito/projects/cluster-chat-server/include/server -I/home/kirito/projects/cluster-chat-server/include/client -I/home/kirito/projects/cluster-chat-server/include/tools -I/home/kirito/projects/cluster-chat-server/thirdpart -g -g -std=gnu++17 -o CMakeFiles/chatserver.dir/main.cpp.o -c /home/kirito/projects/cluster-chat-server/src/server/main.cpp",
+  "file": "/home/kirito/projects/cluster-chat-server/src/server/main.cpp"
+},
+{
+  "directory": "/home/kirito/projects/cluster-chat-server/cmake/build/src/server",
+  "command": "/usr/bin/g++  -I/home/kirito/projects/cluster-chat-server/include -I/home/kirito/projects/cluster-chat-server/include/server -I/home/kirito/projects/cluster-chat-server/include/client -I/home/kirito/projects/cluster-chat-server/include/tools -I/home/kirito/projects/cluster-chat-server/thirdpart -g -g -std=gnu++17 -o CMakeFiles/chatserver.dir/usermodel.cpp.o -c /home/kirito/projects/cluster-chat-server/src/server/usermodel.cpp",
+  "file": "/home/kirito/projects/cluster-chat-server/src/server/usermodel.cpp"
+}
+]

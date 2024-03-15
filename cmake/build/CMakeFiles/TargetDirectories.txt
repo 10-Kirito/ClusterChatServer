@@ -1,0 +1,8 @@
+/home/kirito/projects/cluster-chat-server/cmake/build/CMakeFiles/edit_cache.dir
+/home/kirito/projects/cluster-chat-server/cmake/build/CMakeFiles/rebuild_cache.dir
+/home/kirito/projects/cluster-chat-server/cmake/build/src/CMakeFiles/tools.dir
+/home/kirito/projects/cluster-chat-server/cmake/build/src/CMakeFiles/edit_cache.dir
+/home/kirito/projects/cluster-chat-server/cmake/build/src/CMakeFiles/rebuild_cache.dir
+/home/kirito/projects/cluster-chat-server/cmake/build/src/server/CMakeFiles/chatserver.dir
+/home/kirito/projects/cluster-chat-server/cmake/build/src/server/CMakeFiles/edit_cache.dir
+/home/kirito/projects/cluster-chat-server/cmake/build/src/server/CMakeFiles/rebuild_cache.dir

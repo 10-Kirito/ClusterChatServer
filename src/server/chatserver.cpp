@@ -1,7 +1,9 @@
 #include "chatserver.hpp"
 #include "chatservices.hpp"
+#include "public.hpp"
 #include <functional>
 #include <iostream>
+#include <muduo/base/Logging.h>
 #include <string>
 #include <json.hpp>
 
@@ -40,7 +42,12 @@ void ChatServer::onMessage(const TcpConnectionPtr &connection, Buffer *buffer,
   std::string buf = buffer->retrieveAllAsString();
   json data = json::parse(buf);
 
+  MessageType msgType = data["msgtype"].template get<MessageType>(); 
+
+  LOG_INFO << "Begin handle the json data:";
   // get the message type and call the corresponding handler
-  auto messageHandle = ChatService::getInstance().getHandler(data["msgtype"].template get<MessageType>());
+  auto messageHandle = ChatService::getInstance().getHandler(msgType);
+  LOG_INFO << "Finish get the message handler: " << getMsgTypeText(msgType);
+  LOG_INFO << data.dump();
   messageHandle(connection, data, time);
 }

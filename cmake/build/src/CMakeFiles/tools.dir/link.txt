@@ -1,0 +1,2 @@
+/usr/bin/ar qc libtools.a CMakeFiles/tools.dir/tools/database.cpp.o CMakeFiles/tools.dir/tools/public.cpp.o
+/usr/bin/ranlib libtools.a

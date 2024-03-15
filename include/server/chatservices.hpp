@@ -8,7 +8,8 @@
 #include <muduo/net/TcpConnection.h>
 #include <unordered_map>
 
-#include "SingletonTemplate.hpp"
+#include "usermodel.hpp"
+#include "singletontemplate.hpp"
 #include "public.hpp"
 
 using namespace muduo;
@@ -40,6 +41,8 @@ private:
   ChatService();
   // the message handler map
   std::unordered_map<MessageType, MessageHandler> _msgHandlerMap;
+
+  UserModel _userModel;
 };
 
 #endif // CHATSERVICES_H
