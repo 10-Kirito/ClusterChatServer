@@ -13,8 +13,7 @@
 #include "singletontemplate.hpp" // SingletonTemplate
 #include "usermodel.hpp" // UserModel
 #include "public.hpp" // MessageType
-// Remove the problematic include statement
-// #include "messagemodel.hpp"
+#include "friends/friendsmodel.hpp" // FriendsModel
 
 using namespace muduo;
 using namespace muduo::net;
@@ -31,13 +30,24 @@ class ChatService : public SingletonTemplate<ChatService> {
   friend class SingletonTemplate<ChatService>;
 
 public:
+  /**
+   * up to now, the service has 3 functions:
+   *  1. login;
+   *  2. register;
+   *  3. one-chat;
+   *  4. add-friend;
+   *  5. query-friends;
+   */
   // service for user login
   void Login(const TcpConnectionPtr &, json &, Timestamp);
   // service for user register
   void Register(const TcpConnectionPtr &, json &, Timestamp);
-
   // service for user chat
   void OneChat(const TcpConnectionPtr &, json &, Timestamp);
+  // service for add friends
+  void AddFriend(const TcpConnectionPtr &, json &, Timestamp);
+  // service for query friends
+  void QueryFriends(const TcpConnectionPtr &, json &, Timestamp);
 
   // get the message handler
   MessageHandler getHandler(MessageType type);
@@ -54,6 +64,8 @@ private:
   UserModel _userModel;
 
   MessageModel _messageModel;
+
+  FriendModel _friendModel;
 
   std::mutex _mutex;
 };

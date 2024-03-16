@@ -23,8 +23,9 @@ enum class MessageType {
   REGIST_MSG = 2, // register message
   REGIST_MSG_ACK = 3, // register message ack
   MESSAGE = 4, // message
-  GROUP_MESSAGE = 5 // message
-
+  GROUP_MESSAGE = 5, // message
+  ADD_FRIENDS = 6, // add friends
+  QUERY_FRIENDS = 7, // query friends
 };
 
 

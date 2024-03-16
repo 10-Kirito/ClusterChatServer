@@ -1,4 +1,5 @@
 #include "database.hpp"
+#include "public.hpp"
 #include <cppconn/connection.h>
 #include <cppconn/driver.h>
 #include <cppconn/exception.h>
@@ -7,8 +8,6 @@
 #include <cppconn/statement.h>
 #include <memory>
 #include <muduo/base/Logging.h>
-#include "public.hpp"
-
 
 DataBase::DataBase() : DataBase("127.0.0.1:3306", "kirito", "Zpf.123456") {}
 /**
@@ -43,7 +42,7 @@ DataBase::DataBase(const std::string &iport, const std::string &username,
     // set the database:
     _connection->setSchema("chatserver");
 
-  // create a statement and store it in the shared_ptr
+    // create a statement and store it in the shared_ptr
     /* _statement = std::shared_ptr<sql::Statement>(
         _connection->createStatement(),
         [](sql::Statement *state) { delete state; });
@@ -92,6 +91,17 @@ DataBase::ResultPtr DataBase::query(const std::string &sql) {
   try {
     StatementPtr statement(_connection->createStatement());
     result = std::shared_ptr<sql::ResultSet>(statement->executeQuery(sql));
+  } catch (sql::SQLException &e) {
+    logError(e);
+  }
+  return result;
+}
+
+
+DataBase::ResultPtr DataBase::query(DataBase::PreparedStatementPtr pstmt) {
+  DataBase::ResultPtr result;
+  try {
+    result = std::shared_ptr<sql::ResultSet>(pstmt->executeQuery());
   } catch (sql::SQLException &e) {
     logError(e);
   }

@@ -1,12 +1,14 @@
 #ifndef USER_H
 #define USER_H
 
+#include <json.hpp>
 #include <string>
+using json = nlohmann::json;
 
 using std::string;
 /**
  * @brief The User Class
- * 
+ *
  */
 class User {
 private:
@@ -24,10 +26,24 @@ public:
   inline void setPwd(string pwd) { _password = pwd; }
   inline void setState(string state) { _state = state; }
 
-  inline int getId () const { return _id; }
+  inline int getId() const { return _id; }
   inline string getName() const { return _name; }
   inline string getPwd() const { return _password; }
   inline string getState() const { return _state; }
 };
+
+inline void to_json(json &j, const User &user) {
+  j = json{
+      {"id", user.getId()},
+      {"name", user.getName()}
+  };
+}
+
+inline void from_json(const json &j, User &p) {
+  p.setId(j.at("id"));
+  p.setName(j.at("name"));
+  p.setPwd(j.at("password"));
+  p.setState(j.at("state"));
+}
 
 #endif // USER_H

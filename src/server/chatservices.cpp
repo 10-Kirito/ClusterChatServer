@@ -20,8 +20,15 @@ ChatService::ChatService() {
   // insert the one-chat message handler
   _msgHandlerMap.insert({MessageType::MESSAGE,
                          std::bind(&ChatService::OneChat, this, _1, _2, _3)});
-}
+  // insert the AddFriend handler
+  _msgHandlerMap.insert({MessageType::ADD_FRIENDS,
+                         std::bind(&ChatService::AddFriend, this, _1, _2, _3)});
 
+  // insert the QueryFriends handler
+  _msgHandlerMap.insert(
+      {MessageType::QUERY_FRIENDS,
+       std::bind(&ChatService::QueryFriends, this, _1, _2, _3)});
+}
 /**
  * @brief the service for user login
  *
@@ -65,7 +72,7 @@ void ChatService::Login(const TcpConnectionPtr &connection, json &data,
 
       // get the offline message from the database
       std::vector<Message> old_message = _messageModel.queryMsg(user.getId());
-      if(!old_message.empty()) {
+      if (!old_message.empty()) {
         response["offlinemsg"] = old_message;
       }
       // delete all the offline message, because the user has already read them
@@ -166,6 +173,42 @@ void ChatService::OneChat(const TcpConnectionPtr &connection, json &data,
 }
 
 /**
+ * @brief the funtion to used to add friends
+ *
+ * @param connection
+ * @param data
+ * @param time
+ */
+void ChatService::AddFriend(const TcpConnectionPtr &connection, json &data,
+                            Timestamp time) {
+  // acquire the user's id and the friend's id
+  int from_id = data["from"];
+  int to_id = data["to"];
+
+  _friendModel.insert({from_id, to_id});
+
+  // send the message to the user
+}
+
+/**
+ * @brief query friends
+ *
+ * @param connection
+ * @param data
+ * @param time
+ */
+void ChatService::QueryFriends(const TcpConnectionPtr &connection, json &data,
+                               Timestamp time) {
+  int user_id = data["id"];
+  std::vector<User> result = _friendModel.query(user_id);
+
+  json response;
+
+  response["friends"] = result;
+  connection->send(response.dump());
+}
+
+/**
  * @brief get the message handler
  *
  * @param type
@@ -185,8 +228,8 @@ MessageHandler ChatService::getHandler(MessageType type) {
 
 /**
  * @brief handle the client close exception
- * 
- * @param connection 
+ *
+ * @param connection
  */
 void ChatService::clientCloseException(const TcpConnectionPtr &connection) {
   // handle the user's status:
