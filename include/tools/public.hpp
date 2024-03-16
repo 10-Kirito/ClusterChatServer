@@ -22,12 +22,11 @@ enum class MessageType {
   LOGIN_MSG_ACK = 1,  // login message
   REGIST_MSG = 2, // register message
   REGIST_MSG_ACK = 3, // register message ack
+  MESSAGE = 4, // message
+  GROUP_MESSAGE = 5 // message
+
 };
 
-class Message {
-  MessageType type;
-  std::string content;
-};
 
 /**
  * @brief overload the opertor << for MeaaageType
@@ -48,6 +47,6 @@ std::string getMsgTypeText(const MessageType type);
  * 
  * @param e 
  */
-void logError(sql::SQLException &e);
+void logError(const sql::SQLException &e);
 
 #endif

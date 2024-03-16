@@ -3,9 +3,9 @@
 #include "public.hpp"
 #include <functional>
 #include <iostream>
+#include <json.hpp>
 #include <muduo/base/Logging.h>
 #include <string>
-#include <json.hpp>
 
 using json = nlohmann::json;
 
@@ -32,6 +32,7 @@ void ChatServer::onConnection(const TcpConnectionPtr &connection) {
               << "->" << connection->localAddress().toIpPort()
               << " status: OFFLINE" << std::endl;
     // close the resource when the client close the connection
+    ChatService::getInstance().clientCloseException(connection);
     connection->shutdown();
   }
 }
@@ -40,9 +41,17 @@ void ChatServer::onConnection(const TcpConnectionPtr &connection) {
 void ChatServer::onMessage(const TcpConnectionPtr &connection, Buffer *buffer,
                            Timestamp time) {
   std::string buf = buffer->retrieveAllAsString();
-  json data = json::parse(buf);
-
-  MessageType msgType = data["msgtype"].template get<MessageType>(); 
+  std::string error{};
+  json data;
+  try {
+    error = "---parsing json data---";
+    data = json::parse(buf);
+  } catch (const json::exception &e) {
+    LOG_INFO << error;
+    LOG_INFO << e.what();
+    return;
+  }
+  MessageType msgType = data["msgtype"].template get<MessageType>();
 
   LOG_INFO << "Begin handle the json data:";
   // get the message type and call the corresponding handler

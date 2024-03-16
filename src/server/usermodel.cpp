@@ -17,7 +17,7 @@
  */
 bool UserModel::insert(User &user) {
   try {
-    LOG_INFO << "--Execute the SQL to insert a new user...";
+    // LOG_INFO << "--Execute the SQL to insert a new user...";
     std::string sql = "INSERT INTO User(name, password) VALUES(?,?)";
     // get the database instance
     DataBase &database = DataBase::getInstance();
@@ -77,6 +77,7 @@ User UserModel::query(const int &id) {
       user.setId(result->getInt("id"));
       user.setName(result->getString("name"));
       user.setPwd(result->getString("password"));
+      user.setState(result->getString("state"));
     }
     return user;
 

@@ -32,7 +32,7 @@ std::string getMsgTypeText(const MessageType type) {
  *
  * @param e
  */
-void logError(sql::SQLException &e) {
+void logError(const sql::SQLException &e) {
   LOG_INFO << "\t\t ***Error: SQLException in " << __FILE__;
   LOG_INFO << "\t\t ***The " << __FUNCTION__ << "() on line " << __LINE__;
   LOG_INFO << "\t\t ***Error: " << e.what();

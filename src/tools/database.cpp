@@ -84,7 +84,7 @@ bool DataBase::update(const std::string &sql) {
 }
 
 bool DataBase::update(DataBase::PreparedStatementPtr pstmt) {
-  return pstmt->execute() > 0;
+  return pstmt->executeUpdate() > 0;
 }
 
 DataBase::ResultPtr DataBase::query(const std::string &sql) {
