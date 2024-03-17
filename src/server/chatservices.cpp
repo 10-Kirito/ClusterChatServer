@@ -22,6 +22,8 @@ ChatService::ChatService() {
   // insert the one-chat message handler
   _msgHandlerMap.insert({MessageType::MESSAGE,
                          std::bind(&ChatService::OneChat, this, _1, _2, _3)});
+  _msgHandlerMap.insert({MessageType::GROUP_MESSAGE,
+                         std::bind(&ChatService::GroupChat, this, _1, _2, _3)});
   // insert the AddFriend handler
   _msgHandlerMap.insert({MessageType::ADD_FRIENDS,
                          std::bind(&ChatService::AddFriend, this, _1, _2, _3)});
@@ -63,7 +65,7 @@ void ChatService::Login(const TcpConnectionPtr &connection, json &data,
     if (user.getState() == "online") {
       // the user is already online
       LOG_INFO << "Login failed, the user is already online!";
-      response["msgType"] = MessageType::LOGIN_MSG_ACK;
+      response["msgtype"] = MessageType::LOGIN_MSG_ACK;
       response["status"] = 404;
       response["errorMessage"] = "The user already login!";
     } else {
@@ -78,7 +80,7 @@ void ChatService::Login(const TcpConnectionPtr &connection, json &data,
       LOG_INFO << "Login successful!";
       user.setState("online");
       _userModel.update(user);
-      response["msgType"] = MessageType::LOGIN_MSG_ACK;
+      response["msgtype"] = MessageType::LOGIN_MSG_ACK;
       response["status"] = 200;
       response["id"] = user.getId();
       response["name"] = user.getName();
@@ -97,11 +99,13 @@ void ChatService::Login(const TcpConnectionPtr &connection, json &data,
       }
       // 3. get the user's all groups
       std::vector<Group> groups = _groupModel.queryGroups(user.getId());
-
+      if (!groups.empty()) {
+        response["groups"] = groups;
+      }
     }
   } else {
     LOG_INFO << "Login failed, the password is Wrong!";
-    response["msgType"] = MessageType::LOGIN_MSG_ACK;
+    response["msgtype"] = MessageType::LOGIN_MSG_ACK;
     response["status"] = 404;
     response["errorMessage"] =
         "The password is wrong or the user is not exist!";
@@ -134,7 +138,7 @@ void ChatService::Register(const TcpConnectionPtr &connection, json &data,
   if (state) {
     // register successfully
     json response;
-    response["msgType"] = MessageType::REGIST_MSG_ACK;
+    response["msgtype"] = MessageType::REGIST_MSG_ACK;
     response["status"] = 200;
     response["id"] = user.getId();
     connection->send(response.dump());
@@ -143,7 +147,7 @@ void ChatService::Register(const TcpConnectionPtr &connection, json &data,
   } else {
     // register failed
     json response;
-    response["msgType"] = MessageType::REGIST_MSG_ACK;
+    response["msgtype"] = MessageType::REGIST_MSG_ACK;
     response["status"] = 404;
     connection->send(response.dump());
     LOG_INFO << "Register failed!";
@@ -190,6 +194,52 @@ void ChatService::OneChat(const TcpConnectionPtr &connection, json &data,
     LOG_INFO << "Send message to " << to_user.getName()
              << " failed because the " << to_user.getName()
              << " is not online!";
+  }
+}
+
+/**
+ * @brief the service for group chat
+ *
+ * @param connection
+ * @param data
+ * @param time
+ */
+void ChatService::GroupChat(const TcpConnectionPtr &connection, json &data,
+                            Timestamp time) {
+  /*
+    {
+      "userid": id,
+      "groupid": groupid,
+      "message": "hello, group!"
+    }
+  */
+  // 1. get the all need data from json
+  int userid = data["userid"].template get<int>();
+  int groupid = data["groupid"].template get<int>();
+  // 2. get the users in the group
+  std::vector<User> users = _groupModel.query(groupid).getUsers();
+  std::vector<int> user_id;
+  for (auto &user : users) {
+    user_id.push_back(user.getId());
+  }
+
+  // 3. send the message to the users in the group
+  std::lock_guard<std::mutex> lock(_mutex);
+  for (auto &id : user_id) {
+    if (id != userid) {
+      auto it = _userConnMap.find(id);
+      if (it != _userConnMap.end()) {
+        _userConnMap[id]->send(data.dump());
+      } else {
+        // store the message into the database
+        Message message;
+        message.fromId = userid;
+        message.toId = groupid;
+        message.msgtype = MessageType::GROUP_MESSAGE;
+        message.message = data["message"].template get<std::string>();
+        _messageModel.insert(message);
+      }
+    }
   }
 }
 
@@ -315,6 +365,8 @@ void ChatService::JoinGroup(const TcpConnectionPtr &connection, json &data,
 
 void ChatService::DeleteGroup(const TcpConnectionPtr &connection, json &data,
                               Timestamp time) {}
+void ChatService::QuitGroup(const TcpConnectionPtr &connection, json &data,
+                            Timestamp time) {}
 
 /**
  * @brief get the message handler

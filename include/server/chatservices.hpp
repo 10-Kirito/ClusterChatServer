@@ -46,6 +46,7 @@ public:
   void Register(const TcpConnectionPtr &, json &, Timestamp);
   // service for user chat
   void OneChat(const TcpConnectionPtr &, json &, Timestamp);
+  void GroupChat(const TcpConnectionPtr &, json &, Timestamp);
   // service for add friends
   void AddFriend(const TcpConnectionPtr &, json &, Timestamp);
   // service for query friends
