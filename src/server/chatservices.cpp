@@ -1,4 +1,6 @@
 #include "chatservices.hpp"
+#include "groups/group.hpp"
+#include "groups/groupuser.hpp"
 #include "json.hpp"
 #include "message/messge.hpp"
 #include "messagemodel.hpp"
@@ -23,11 +25,22 @@ ChatService::ChatService() {
   // insert the AddFriend handler
   _msgHandlerMap.insert({MessageType::ADD_FRIENDS,
                          std::bind(&ChatService::AddFriend, this, _1, _2, _3)});
-
   // insert the QueryFriends handler
   _msgHandlerMap.insert(
       {MessageType::QUERY_FRIENDS,
        std::bind(&ChatService::QueryFriends, this, _1, _2, _3)});
+
+  // insert the CreateGroup handler
+  _msgHandlerMap.insert(
+      {MessageType::CREATE_GROUP,
+       std::bind(&ChatService::CreateGroup, this, _1, _2, _3)});
+  _msgHandlerMap.insert({MessageType::JOIN_GROUP,
+                         std::bind(&ChatService::JoinGroup, this, _1, _2, _3)});
+  _msgHandlerMap.insert(
+      {MessageType::DELETE_GROUP,
+       std::bind(&ChatService::DeleteGroup, this, _1, _2, _3)});
+  _msgHandlerMap.insert({MessageType::QUIT_GROUP,
+                         std::bind(&ChatService::QuitGroup, this, _1, _2, _3)});
 }
 /**
  * @brief the service for user login
@@ -70,13 +83,21 @@ void ChatService::Login(const TcpConnectionPtr &connection, json &data,
       response["id"] = user.getId();
       response["name"] = user.getName();
 
-      // get the offline message from the database
+      // 1. get the offline message from the database
       std::vector<Message> old_message = _messageModel.queryMsg(user.getId());
       if (!old_message.empty()) {
         response["offlinemsg"] = old_message;
       }
       // delete all the offline message, because the user has already read them
       _messageModel.deleteMsg(old_message);
+      // 2. get the user's all friends
+      std::vector<User> friends = _friendModel.query(user.getId());
+      if (!friends.empty()) {
+        response["friends"] = friends;
+      }
+      // 3. get the user's all groups
+      std::vector<Group> groups = _groupModel.queryGroups(user.getId());
+
     }
   } else {
     LOG_INFO << "Login failed, the password is Wrong!";
@@ -207,6 +228,93 @@ void ChatService::QueryFriends(const TcpConnectionPtr &connection, json &data,
   response["friends"] = result;
   connection->send(response.dump());
 }
+
+/**
+ * @brief create a group
+ *
+ * @param connection
+ * @param data
+ * @param time
+ */
+void ChatService::CreateGroup(const TcpConnectionPtr &connection, json &data,
+                              Timestamp time) {
+  /*
+  {
+    "msgtype": 8,
+    "userid": 1,
+    "groupname": "group1",
+    "groupdesc": "group1 desc",
+  }
+  */
+
+  json response;
+  // 0. get the all need data from json
+  int user_id = data["userid"].template get<int>();
+  std::string group_name = data["groupname"].template get<std::string>();
+  std::string group_desc = data["groupdesc"].template get<std::string>();
+
+  // 1. check if the user exist?
+  bool userexist = _userModel.exist(user_id);
+  response["userexist"] = userexist;
+  // if the user don't exists, return
+  if (!userexist) {
+    response["status"] = 404;
+    connection->send(response.dump());
+    return;
+  }
+  // 2. create the group and update the AllGroup and GroupUser tables
+  Group group{group_name, group_desc};
+  bool result = _groupModel.create(group);
+  if (result) {
+    // if the group create successfully, then add the user to the group
+    GroupUser groupuser{group.getId(), user_id, "creator"};
+    _groupUserModel.insert(groupuser);
+    response["Group"] = group;
+  }
+  response["status"] = result ? 200 : 404;
+}
+
+/**
+ * @brief join the group
+ *
+ * @param connection
+ * @param data
+ * @param time
+ */
+void ChatService::JoinGroup(const TcpConnectionPtr &connection, json &data,
+                            Timestamp time) {
+  /*
+  {
+    "msgtype": 9,
+    "groupid": groupid,
+    "userid": userid
+  }
+  */
+  json response;
+  // 0. get the all need data from json
+  int groupid = data["groupid"].template get<int>();
+  int userid = data["userid"].template get<int>();
+  // 1. check the user or group if exist:
+  if (!_userModel.exist(userid)) {
+    response["userexist"] = false;
+    connection->send(response.dump());
+    return;
+  }
+  if (!_groupModel.exist(groupid)) {
+    response["groupdexist"] = false;
+    connection->send(response.dump());
+    return;
+  }
+  // 2. the user and the group both exist, then add the user to the group
+  if (_groupUserModel.insert({groupid, userid, "normal"})) {
+    response["status"] = 200;
+    response["message"] = "already join the group!";
+  }
+  connection->send(response.dump());
+}
+
+void ChatService::DeleteGroup(const TcpConnectionPtr &connection, json &data,
+                              Timestamp time) {}
 
 /**
  * @brief get the message handler

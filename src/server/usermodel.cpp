@@ -88,6 +88,30 @@ User UserModel::query(const int &id) {
 }
 
 /**
+ * @brief check a user if exists
+ * 
+ * @param id 
+ * @return true 
+ * @return false 
+ */
+bool UserModel::exist(const int & id) {
+  User user;
+  try {
+    std::string sql = "select * from User where id = ?";
+    DataBase &database = DataBase::getInstance();
+    DataBase::PreparedStatementPtr pstmt(
+        database.getConnection()->prepareStatement(sql));
+
+    pstmt->setInt(1, id);
+    DataBase::ResultPtr result(pstmt->executeQuery());
+    return result->rowsCount() > 0;
+  } catch (sql::SQLException &e) {
+    logError(e);
+    return false;
+  }
+}
+
+/**
  * @brief update the user's details
  *
  * @param user

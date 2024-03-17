@@ -1,19 +1,21 @@
 #ifndef CHATSERVICES_H
 #define CHATSERVICES_H
 
-#include <functional> // std::function
-#include <json.hpp> // nlohmann::json
-#include <muduo/base/Timestamp.h> // Timestamp
-#include <muduo/net/Callbacks.h> // TcpConnectionPtr
+#include <functional>                // std::function
+#include <json.hpp>                  // nlohmann::json
+#include <muduo/base/Timestamp.h>    // Timestamp
+#include <muduo/net/Callbacks.h>     // TcpConnectionPtr
 #include <muduo/net/TcpConnection.h> // TcpConnectionPtr
-#include <mutex> // mutex
-#include <unordered_map> // unordered_map
+#include <mutex>                     // mutex
+#include <unordered_map>             // unordered_map
 
-#include "messagemodel.hpp"
-#include "singletontemplate.hpp" // SingletonTemplate
-#include "usermodel.hpp" // UserModel
-#include "public.hpp" // MessageType
 #include "friends/friendsmodel.hpp" // FriendsModel
+#include "groups/groupsmodel.hpp"
+#include "groups/groupusermodel.hpp"
+#include "messagemodel.hpp"
+#include "public.hpp"            // MessageType
+#include "singletontemplate.hpp" // SingletonTemplate
+#include "usermodel.hpp"         // UserModel
 
 using namespace muduo;
 using namespace muduo::net;
@@ -48,11 +50,17 @@ public:
   void AddFriend(const TcpConnectionPtr &, json &, Timestamp);
   // service for query friends
   void QueryFriends(const TcpConnectionPtr &, json &, Timestamp);
+  // service for create group
+  void CreateGroup(const TcpConnectionPtr &, json &, Timestamp);
+  void DeleteGroup(const TcpConnectionPtr &, json &, Timestamp);
+  void JoinGroup(const TcpConnectionPtr &, json &, Timestamp);
+  void QuitGroup(const TcpConnectionPtr &, json &, Timestamp);
 
   // get the message handler
   MessageHandler getHandler(MessageType type);
   // when the client close the connection, delete something
   void clientCloseException(const TcpConnectionPtr &connection);
+
 private:
   ChatService();
   // the message handler map
@@ -62,11 +70,10 @@ private:
   std::unordered_map<TcpConnectionPtr, int> _userMap;
 
   UserModel _userModel;
-
   MessageModel _messageModel;
-
   FriendModel _friendModel;
-
+  GroupsModel _groupModel;
+  GroupUserModel _groupUserModel;
   std::mutex _mutex;
 };
 

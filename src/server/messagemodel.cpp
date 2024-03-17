@@ -31,6 +31,7 @@ void MessageModel::insert(const Message &msg) {
            << (success ? "success" : "failed");
 }
 
+
 /**
  * @brief delete the message
  *
