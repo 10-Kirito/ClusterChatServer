@@ -253,7 +253,6 @@ void doLoginResponse(json &responsejs) {
              << " said: " << message.message << endl;
       }
     }
-
     // display offline group message:
     if (responsejs.contains("groupmsg")) {
       /*
@@ -271,7 +270,6 @@ void doLoginResponse(json &responsejs) {
       }
       */
       std::vector<std::vector<Message>> groupmsg = responsejs["groupmsg"];
-
       cout << "------------------------------------------------------" << endl;
       for (const auto &onegroup : groupmsg) {
         cout << "group message[" << onegroup[0].toId << "]:" << endl;
@@ -325,14 +323,32 @@ void readTaskHandler(int clientfd) {
     if (MessageType::UPDATE_USER_ACK == msgtype) {
       global_userfriends_list.clear();
       global_group_list.clear();
-      global_userfriends_list = js["friends"].get<std::vector<User>>();
-      global_group_list = js["groups"].get<std::vector<Group>>();
+      if (js.contains("friends"))
+        global_userfriends_list = js["friends"].get<std::vector<User>>();
+      if (js.contains("groups"))
+        global_group_list = js["groups"].get<std::vector<Group>>();
+
+      cout << "Type `help` to see other commands." << endl;
       continue;
     }
     if (MessageType::GROUP_MESSAGE == msgtype) {
       cout << "group message[" << js["to"] << "]:" << js["time"].get<string>()
            << " from [" << js["from"] << "]"
            << " said: " << js["message"].get<string>() << endl;
+      continue;
+    }
+
+    if (MessageType::CREATE_GROUP_ACK == msgtype) {
+      int status = js["status"].get<int>();
+
+      if (status == 200) {
+        Group group = js["group"];
+        cout << "create the group successfully!" << endl;
+        cout << "the groupid is " << group.getId() << endl;
+      } else {
+        cout << "create the group failed!" << endl;
+      }
+      homePage(clientfd);
       continue;
     }
   }
@@ -348,19 +364,24 @@ void groupChat(int, std::string);
 void showUsersInGroup(int, std::string);
 // "update" command handler
 void update(int, std::string);
+// "addfriend" command handler
+void addFriend(int, std::string);
+// "creategroup" command handler
+void createGroup(int, std::string);
 // the command lists
 std::unordered_map<std::string, std::string> commandMap = {
     {"quit", "\t(exit the chat)"},
-    {"chat", "\t(chat with someone) usage-> `chat:friendid:message`"},
-    {"groupchat", "(chat with group) usage> `groupchat:groupid:message`"},
-    {"showme", "(show my details) usage> `showme`"},
     {"help", "\t(get the help list) usage-> `help`"},
+    {"updatelist", "(update the user's list) usage-> `updatelist`"},
+    {"groupchat", "(chat with group) usage> `groupchat:groupid:message`"},
+    {"chat", "\t(chat with someone) usage-> `chat:friendid:message`"},
+    {"joingroup", "(create group) uage-> `joingroup:groupid`"},
+    {"creategroup",
+     "(create group) usage -> `creategroup:groupname:groupdesc`"},
     {"list", "(get the users in the group) usge-> `list:groupid`"},
-    {"updatelist", "(update the user's list) usage-> `updatelist`"}
-   /*  {"addfriend", "add friend"},
-    {"creategroup", "create group"},       {"addgroup", "add group"},
-    {"groupmembers", "get group members"}, {"loginout", "login out"},
-    {"quit", "quit the chat system"} */};
+    {"addfriend", "(add friend) usage-> `addfriend:friendid`"},
+    {"showme", "(show my details) usage> `showme`"},
+};
 
 std::unordered_map<std::string, std::function<void(int, std::string)>>
     commandHandlerMap = {{"help", help},
@@ -369,12 +390,15 @@ std::unordered_map<std::string, std::function<void(int, std::string)>>
                          {"showme", showCurrentUserData},
                          {"list", showUsersInGroup},
                          {"groupchat", groupChat},
-                         {"update", update}};
+                         {"updatelist", update},
+                         {"addfriend", addFriend},
+                         {"creategroup", createGroup}};
 
 void homePage(int clientfd) {
   help();
   char buffer[1024] = {0};
   while (isMainMenuRunning) {
+    cout << "->";
     cin.getline(buffer, 1024);
     string commandbuf(buffer);
     // store the commands
@@ -398,7 +422,7 @@ void homePage(int clientfd) {
 // "help" command handler
 void help(int, std::string) {
   cout << endl;
-  cout << "                    <<<<show command list >>> " << endl;
+  cout << "->show command list" << endl;
   for (auto &p : commandMap) {
     cout << p.first << " : \t" << p.second << endl;
   }
@@ -491,6 +515,55 @@ void update(int clientfd, std::string) {
   json data;
   data["msgtype"] = MessageType::UPDATE_USER;
   data["id"] = global_user.getId();
+  std::string buffer = data.dump();
+  int len = send(clientfd, buffer.c_str(), strlen(buffer.c_str()), 0);
+  if (-1 == len) {
+    std::cerr << "send chat msg error -> " << buffer << endl;
+  }
+}
+
+/**
+ * @brief add new friends
+ *
+ * @param clientfd
+ * @param str
+ */
+void addFriend(int clientfd, std::string str) {
+  // str: friendid
+  // send the add friend request to the server
+  json data;
+  data["msgtype"] = MessageType::ADD_FRIENDS;
+  data["from"] = global_user.getId();
+  data["to"] = atoi(str.c_str());
+
+  std::string buffer = data.dump();
+  int len = send(clientfd, buffer.c_str(), strlen(buffer.c_str()), 0);
+  if (-1 == len) {
+    std::cerr << "send chat msg error -> " << buffer << endl;
+  }
+}
+
+/**
+ * @brief Create a Group object
+ *
+ * @param clientfd
+ * @param str
+ */
+void createGroup(int clientfd, std::string str) {
+  // str: groupname:groupdesc
+  json data;
+  data["msgtype"] = MessageType::CREATE_GROUP;
+  data["userid"] = global_user.getId();
+  int idx = str.find(":");
+  if (idx == -1) {
+    std::cerr << "create group command invalid!" << endl;
+    return;
+  }
+  std::string groupname = str.substr(0, idx);
+  std::string groupdesc = str.substr(idx + 1, str.size() - idx);
+  data["groupname"] = groupname;
+  data["groupdesc"] = groupdesc;
+
   std::string buffer = data.dump();
   int len = send(clientfd, buffer.c_str(), strlen(buffer.c_str()), 0);
   if (-1 == len) {

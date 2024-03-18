@@ -20,10 +20,10 @@ void FriendModel::insert(const Friends &friends) {
       database.getConnection()->prepareStatement(sql_1));
 
   pstmt->setInt(1, friends.getUserid());
-  pstmt->setInt(2, friends.getUserid());
+  pstmt->setInt(2, friends.getFriendid());
 
+  pstmt_1->setInt(1, friends.getFriendid());
   pstmt_1->setInt(2, friends.getUserid());
-  pstmt_1->setInt(1, friends.getUserid());
 
   bool success;
   try {

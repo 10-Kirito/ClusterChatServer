@@ -6,7 +6,6 @@
 #include "messagemodel.hpp"
 #include "public.hpp"
 #include "user.hpp"
-#include <iomanip>
 #include <muduo/base/Logging.h>
 #include <mutex>
 #include <vector>
@@ -347,6 +346,7 @@ void ChatService::CreateGroup(const TcpConnectionPtr &connection, json &data,
   */
 
   json response;
+  response["msgtype"] = MessageType::CREATE_GROUP_ACK;
   // 0. get the all need data from json
   int user_id = data["userid"].template get<int>();
   std::string group_name = data["groupname"].template get<std::string>();
@@ -368,9 +368,10 @@ void ChatService::CreateGroup(const TcpConnectionPtr &connection, json &data,
     // if the group create successfully, then add the user to the group
     GroupUser groupuser{group.getId(), user_id, "creator"};
     _groupUserModel.insert(groupuser);
-    response["Group"] = group;
+    response["group"] = group;
   }
   response["status"] = result ? 200 : 404;
+  connection->send(response.dump());
 }
 
 /**

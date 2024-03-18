@@ -16,7 +16,7 @@ bool GroupsModel::create(Group &group) {
 
   if (result) {
     // set the groupid and user can use the groupid to join or quit
-    std::string lastid = "select last_insert_id() as groupid;";
+    std::string lastid = "select last_insert_id() as groupid";
     DataBase::PreparedStatementPtr pstmt_1(
         database.getConnection()->prepareStatement(lastid));
     DataBase::ResultPtr res(pstmt_1->executeQuery());

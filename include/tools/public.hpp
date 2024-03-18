@@ -41,6 +41,8 @@ enum class MessageType {
   // update the user's details
   UPDATE_USER = 12,
   UPDATE_USER_ACK = 13,
+
+  CREATE_GROUP_ACK = 14
 };
 
 
