@@ -6,7 +6,7 @@
 
 bool GroupsModel::create(Group &group) {
   DataBase &database = DataBase::getInstance();
-  std::string sql = "insert into AllGroup (groupname, groupdesc) value (?, ?);";
+  std::string sql = "insert into AllGroup (groupname, groupdesc) value (?, ?)";
   DataBase::PreparedStatementPtr pstmt(
       database.getConnection()->prepareStatement(sql));
   pstmt->setString(1, group.getName());

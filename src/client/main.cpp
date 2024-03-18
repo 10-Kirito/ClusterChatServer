@@ -287,9 +287,9 @@ void doLoginResponse(json &responsejs) {
 // the thread receive the data from server
 void readTaskHandler(int clientfd) {
   for (;;) {
-    char buffer[1024] = {0};
+    char buffer[4096] = {0};
     // block here to reveive the data from server
-    int len = recv(clientfd, buffer, 1024, 0);
+    int len = recv(clientfd, buffer, 4096, 0);
     if (-1 == len || 0 == len) {
       close(clientfd);
       exit(-1);
@@ -351,6 +351,25 @@ void readTaskHandler(int clientfd) {
       homePage(clientfd);
       continue;
     }
+
+    if (MessageType::ADD_FRIENDS == msgtype) {
+      cout << "add friend successfully" << endl;
+      homePage(clientfd);
+      continue;
+    }
+
+    if (MessageType::JOIN_GROUP == msgtype) {
+      int status = js["status"].get<int>();
+      if (status == 200) {
+        cout << "join the group successfully" << endl;
+      } else if (status == 500) {
+        cout << "the user doesn't exist" << endl;
+      } else {
+        cout << "the group doesn't exist" << endl;
+      }
+      homePage(clientfd);
+      continue;
+    }
   }
 }
 
@@ -368,6 +387,7 @@ void update(int, std::string);
 void addFriend(int, std::string);
 // "creategroup" command handler
 void createGroup(int, std::string);
+void joinGroup(int, std::string);
 // the command lists
 std::unordered_map<std::string, std::string> commandMap = {
     {"quit", "\t(exit the chat)"},
@@ -392,7 +412,8 @@ std::unordered_map<std::string, std::function<void(int, std::string)>>
                          {"groupchat", groupChat},
                          {"updatelist", update},
                          {"addfriend", addFriend},
-                         {"creategroup", createGroup}};
+                         {"creategroup", createGroup},
+                         {"joingroup", joinGroup}};
 
 void homePage(int clientfd) {
   help();
@@ -563,6 +584,26 @@ void createGroup(int clientfd, std::string str) {
   std::string groupdesc = str.substr(idx + 1, str.size() - idx);
   data["groupname"] = groupname;
   data["groupdesc"] = groupdesc;
+
+  std::string buffer = data.dump();
+  int len = send(clientfd, buffer.c_str(), strlen(buffer.c_str()), 0);
+  if (-1 == len) {
+    std::cerr << "send chat msg error -> " << buffer << endl;
+  }
+}
+
+/**
+ * @brief join the group
+ *
+ * @param clientfd
+ * @param str
+ */
+void joinGroup(int clientfd, std::string str) {
+  // str: groupid
+  json data;
+  data["msgtype"] = MessageType::JOIN_GROUP;
+  data["userid"] = global_user.getId();
+  data["groupid"] = atoi(str.c_str());
 
   std::string buffer = data.dump();
   int len = send(clientfd, buffer.c_str(), strlen(buffer.c_str()), 0);

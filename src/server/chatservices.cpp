@@ -6,6 +6,7 @@
 #include "messagemodel.hpp"
 #include "public.hpp"
 #include "user.hpp"
+#include <iomanip>
 #include <muduo/base/Logging.h>
 #include <mutex>
 #include <vector>
@@ -64,12 +65,12 @@ void ChatService::Login(const TcpConnectionPtr &connection, json &data,
   User user = _userModel.query(id);
 
   json response;
+  response["msgtype"] = MessageType::LOGIN_MSG_ACK;
   // LOG_INFO << "Checking user's password...";
   if (user.getId() != -1 && user.getPwd() == pwd) {
     if (user.getState() == "online") {
       // the user is already online
       LOG_INFO << "Login failed, the user is already online!";
-      response["msgtype"] = MessageType::LOGIN_MSG_ACK;
       response["status"] = 401;
       response["errorMessage"] = "The user already login!";
     } else {
@@ -84,7 +85,6 @@ void ChatService::Login(const TcpConnectionPtr &connection, json &data,
       LOG_INFO << "Login successful!";
       user.setState("online");
       _userModel.update(user);
-      response["msgtype"] = MessageType::LOGIN_MSG_ACK;
       response["status"] = 200;
       response["id"] = user.getId();
       response["name"] = user.getName();
@@ -118,12 +118,11 @@ void ChatService::Login(const TcpConnectionPtr &connection, json &data,
     }
   } else {
     LOG_INFO << "Login failed, the password is Wrong!";
-    response["msgtype"] = MessageType::LOGIN_MSG_ACK;
     response["status"] = 400;
     response["errorMessage"] =
         "The password is wrong or the user is not exist!";
   }
-  // std::cout << std::setw(4) << response;
+  std::cout << std::setw(4) << response;
   connection->send(response.dump());
 }
 
@@ -307,6 +306,8 @@ void ChatService::AddFriend(const TcpConnectionPtr &connection, json &data,
   _friendModel.insert({from_id, to_id});
 
   // send the message to the user
+  json response;
+  response["msgtype"] = MessageType::ADD_FRIENDS;
 }
 
 /**
@@ -391,24 +392,26 @@ void ChatService::JoinGroup(const TcpConnectionPtr &connection, json &data,
   }
   */
   json response;
+  response["msgtype"] = MessageType::JOIN_GROUP;
   // 0. get the all need data from json
   int groupid = data["groupid"].template get<int>();
   int userid = data["userid"].template get<int>();
   // 1. check the user or group if exist:
   if (!_userModel.exist(userid)) {
-    response["userexist"] = false;
+    // response["userexist"] = false;
+    response["status"] = 500;
     connection->send(response.dump());
     return;
   }
   if (!_groupModel.exist(groupid)) {
-    response["groupdexist"] = false;
+    // response["groupdexist"] = false;
+    response["status"] = 501;
     connection->send(response.dump());
     return;
   }
   // 2. the user and the group both exist, then add the user to the group
   if (_groupUserModel.insert({groupid, userid, "normal"})) {
     response["status"] = 200;
-    response["message"] = "already join the group!";
   }
   connection->send(response.dump());
 }

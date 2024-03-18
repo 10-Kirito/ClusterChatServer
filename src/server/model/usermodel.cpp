@@ -121,7 +121,7 @@ bool UserModel::exist(const int & id) {
 bool UserModel::update(User &user) {
   try {
     std::string sql = "update User set state = ?, name = ?, "
-                      "password = ?  where id = ?;";
+                      "password = ?  where id = ?";
     DataBase &database = DataBase::getInstance();
 
     DataBase::PreparedStatementPtr pstmt(
