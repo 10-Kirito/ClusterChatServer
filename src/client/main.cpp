@@ -14,6 +14,7 @@
 #include "user.hpp"
 #include <arpa/inet.h>
 #include <atomic>
+#include <cstdlib>
 #include <cstring>
 #include <functional>
 #include <iostream>
@@ -40,7 +41,6 @@ bool isMainMenuRunning = false;
 User global_user;
 std::vector<User> global_userfriends_list;
 std::vector<Group> global_group_list;
-
 // the global login status
 std::atomic_bool global_login_status{false};
 // the read-write lock
@@ -53,6 +53,7 @@ void readTaskHandler(int clientfd);
 void homePage(int);
 // --the system time:
 std::string getCurrentTime();
+void quit(int clientfd, std::string str = "");
 
 int main(int argc, char **argv) {
   if (argc < 3) {
@@ -79,7 +80,7 @@ int main(int argc, char **argv) {
     close(clientfd);
     exit(-1);
   }
-  // create the read-write lock
+  // create the read-write lock, and initialize the value to 0
   sem_init(&rwsem, 0, 0);
   // connect the server successfully, then start the thread
   std::thread readTask(readTaskHandler, clientfd);
@@ -129,7 +130,7 @@ int main(int argc, char **argv) {
         homePage(clientfd);
       }
     } break;
-    case 2: // register业务
+    case 2: // register
     {
       char name[50] = {0};
       char pwd[50] = {0};
@@ -139,7 +140,7 @@ int main(int argc, char **argv) {
       cin.getline(pwd, 50);
 
       json js;
-      js["msgid"] = MessageType::REGIST_MSG;
+      js["msgtype"] = MessageType::REGIST_MSG;
       js["name"] = name;
       js["password"] = pwd;
       std::string request = js.dump();
@@ -151,48 +152,72 @@ int main(int argc, char **argv) {
 
       sem_wait(&rwsem); // 等待信号量，子线程处理完注册消息会通知
     } break;
-    case 3: // quit业务
-      close(clientfd);
-      sem_destroy(&rwsem);
-      exit(0);
+    case 3: // quit
+      quit(clientfd);
     default:
       std::cerr << "invalid input!" << endl;
       break;
     }
   }
-
   return 0;
 }
 
+void quit(int clientfd, std::string str) {
+  close(clientfd);
+  sem_destroy(&rwsem);
+  exit(0);
+}
+
 // display the current user's information
-void showCurrentUserData() {
+void showCurrentUserData(int, std::string) {
+  cout << endl;
   cout << "----------------------login user---------------------" << endl;
-  cout << "current login user => id:" << global_user.getId()
-       << " name:" << global_user.getName() << endl;
+  cout << "current user => account:" << global_user.getId()
+       << " username:" << global_user.getName() << endl;
   cout << "----------------------friend list---------------------" << endl;
   if (!global_userfriends_list.empty()) {
+    cout << "id\t\tname\t\tstate" << endl;
     for (User &user : global_userfriends_list) {
-      cout << user.getId() << " " << user.getName() << " " << user.getState()
-           << endl;
+      cout << user.getId() << "\t\t" << user.getName() << "\t\t"
+           << user.getState() << endl;
     }
   }
   cout << "----------------------group list----------------------" << endl;
   if (!global_group_list.empty()) {
+    cout << "id\t\tname\t\t\tdesc" << endl;
     for (Group &group : global_group_list) {
-      cout << group.getId() << " " << group.getName() << " " << group.getDesc()
-           << endl;
+      cout << group.getId() << "\t\t" << group.getName() << "\t\t\t"
+           << group.getDesc() << endl;
     }
   }
   cout << "------------------------------------------------------" << endl;
+  cout << "Type `help` to see other commands." << endl;
+}
+
+// handler the register response
+void doRegResponse(json &responsejs) {
+  if (200 != responsejs["status"].get<int>()) // register failed
+  {
+    std::cerr << "register error!" << endl;
+  } else // register successfully
+  {
+    cout << "name register success, userid is " << responsejs["id"]
+         << ", do not forget it!" << endl;
+  }
 }
 
 // handle with the login response
 void doLoginResponse(json &responsejs) {
   // login failed
-  if (200 != responsejs["status"].get<int>()) {
-    std::cerr << responsejs["status"] << endl;
+  if (400 == responsejs["status"].get<int>()) {
+    std::cerr << "(" << responsejs["status"]
+              << ")The password is wrong or the user is not exist!" << endl;
     global_login_status = false;
     // login successfully
+  } else if (401 == responsejs["status"].get<int>()) {
+    std::cerr << "(" << responsejs["status"] << ")The user is already online!"
+              << endl;
+    global_login_status = false;
   } else {
     // 0.record the current user's information
     global_user.setId(responsejs["id"].template get<int>());
@@ -201,6 +226,8 @@ void doLoginResponse(json &responsejs) {
     // 1.record the current user's friends list
     global_userfriends_list.clear();
     if (responsejs.contains("friends")) {
+      auto test = responsejs["friends"];
+      std::cout << responsejs["friend"];
       global_userfriends_list =
           responsejs["friends"].template get<std::vector<User>>();
     }
@@ -214,6 +241,7 @@ void doLoginResponse(json &responsejs) {
     }
 
     // display the user's information
+    showCurrentUserData(1, "");
 
     // display offline message:
     if (responsejs.contains("offlinemsg")) {
@@ -255,10 +283,14 @@ void readTaskHandler(int clientfd) {
       sem_post(&rwsem);
       continue;
     }
-
+    if (MessageType::REGIST_MSG_ACK == msgtype) {
+      doRegResponse(js);
+      sem_post(&rwsem);
+      continue;
+    }
     if (MessageType::MESSAGE == msgtype) {
+      Message message = js;
       cout << js["time"].get<std::string>() << " [" << js["from"] << "]"
-           << js["name"].get<std::string>()
            << " said: " << js["message"].get<std::string>() << endl;
       continue;
     }
@@ -272,11 +304,7 @@ void readTaskHandler(int clientfd) {
 
 
 
-    if (REG_MSG_ACK == msgtype) {
-      doRegResponse(js);
-      sem_post(&rwsem); // 通知主线程，注册结果处理完成
-      continue;
-    } */
+     */
   }
 }
 
@@ -284,27 +312,58 @@ void readTaskHandler(int clientfd) {
 void help(int fd = 0, std::string str = "");
 // "chat" command handler
 void chat(int, std::string);
-
+// "list" command handler
+void showUsersInGroup(int, std::string);
 // the command lists
 std::unordered_map<std::string, std::string> commandMap = {
-    {"help", "get the help list. Usage: help"},
-    {"chat", "chat with someone. Usage: chat:friendid::message"},
-    {"groupchat", "chat with group. Usage: groupchat:groupid::message"},
+    {"quit", "\t(exit the chat)"},
+    {"chat", "\t(chat with someone) usage-> `chat:friendid:message`"},
+    {"groupchat", "(chat with group) usage> `groupchat:groupid:message`"},
+    {"showme", "(show my details) usage> `groupchat:groupid:message`"},
+    {"help", "\t(get the help list) usage-> `help`"},
+    {"list", "(get the users in the group) usge-> `list:groupid`"}
    /*  {"addfriend", "add friend"},
     {"creategroup", "create group"},       {"addgroup", "add group"},
     {"groupmembers", "get group members"}, {"loginout", "login out"},
     {"quit", "quit the chat system"} */};
 
 std::unordered_map<std::string, std::function<void(int, std::string)>>
-    commandHandlerMap = {{"help", help}, {"chat", chat}};
+    commandHandlerMap = {{"help", help},
+                         {"chat", chat},
+                         {"quit", quit},
+                         {"showme", showCurrentUserData},
+                         {"list", showUsersInGroup}};
 
-void homePage(int clientfd) {}
+void homePage(int clientfd) {
+  help();
+  char buffer[1024] = {0};
+  while (isMainMenuRunning) {
+    cin.getline(buffer, 1024);
+    string commandbuf(buffer);
+    // store the commands
+    string command;
+    int idx = commandbuf.find(":");
+    if (-1 == idx) {
+      command = commandbuf;
+    } else {
+      command = commandbuf.substr(0, idx);
+    }
+    auto it = commandHandlerMap.find(command);
+    if (it == commandHandlerMap.end()) {
+      std::cerr << "invalid input command!" << endl;
+      continue;
+    }
+    // handle the command the user input, and input the user's input
+    it->second(clientfd, commandbuf.substr(idx + 1, commandbuf.size() - idx));
+  }
+}
 
 // "help" command handler
 void help(int, std::string) {
-  cout << "show command list >>> " << endl;
+  cout << endl;
+  cout << "                    <<<<show command list >>> " << endl;
   for (auto &p : commandMap) {
-    cout << p.first << " : " << p.second << endl;
+    cout << p.first << " : \t" << p.second << endl;
   }
   cout << endl;
 }
@@ -339,6 +398,27 @@ void chat(int clientfd, std::string str) {
   if (-1 == len) {
     std::cerr << "send chat msg error -> " << buffer << endl;
   }
+}
+
+void showUsersInGroup(int clientfd, std::string str) {
+  // str: groupid
+  cout << "------------------------------------------------------" << endl;
+  int groupid = atoi(str.c_str());
+  for (const auto &group : global_group_list) {
+    if (group.getId() == groupid) {
+      cout << "group: " << group.getName()
+           << " has the following members: " << endl;
+      cout << "id\t\tname\t\tstate" << endl;
+      for (const auto &user : group.getUsers()) {
+        cout << user.getId() << "\t\t" << user.getName() << "\t\t"
+             << user.getState() << endl;
+      }
+      cout << "------------------------------------------------------" << endl;
+      cout << "Type `help` to see other commands." << endl;
+      return;
+    }
+  }
+  cout << "group not found!" << endl;
 }
 
 /**

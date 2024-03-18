@@ -18,7 +18,7 @@ private:
   string _state;
 
 public:
-  User(int id = -1, string name = "", string pwd = "", string state = "offline")
+  User(int id = -1, string name = "", string state = "offline", string pwd = "")
       : _id(id), _name(name), _password(pwd), _state(state) {}
 
   inline void setId(int id) { _id = id; }
@@ -33,16 +33,12 @@ public:
 };
 
 inline void to_json(json &j, const User &user) {
-  j = json{
-      {"id", user.getId()},
-      {"name", user.getName()}
-  };
+  j = json{{"id", user.getId()}, {"name", user.getName()}, {"state", user.getState()}};
 }
 
 inline void from_json(const json &j, User &p) {
   p.setId(j.at("id"));
   p.setName(j.at("name"));
-  p.setPwd(j.at("password"));
   p.setState(j.at("state"));
 }
 

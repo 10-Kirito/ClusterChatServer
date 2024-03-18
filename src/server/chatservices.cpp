@@ -66,7 +66,7 @@ void ChatService::Login(const TcpConnectionPtr &connection, json &data,
       // the user is already online
       LOG_INFO << "Login failed, the user is already online!";
       response["msgtype"] = MessageType::LOGIN_MSG_ACK;
-      response["status"] = 404;
+      response["status"] = 401;
       response["errorMessage"] = "The user already login!";
     } else {
       // login successfully and store the user's connection
@@ -106,7 +106,7 @@ void ChatService::Login(const TcpConnectionPtr &connection, json &data,
   } else {
     LOG_INFO << "Login failed, the password is Wrong!";
     response["msgtype"] = MessageType::LOGIN_MSG_ACK;
-    response["status"] = 404;
+    response["status"] = 400;
     response["errorMessage"] =
         "The password is wrong or the user is not exist!";
   }
@@ -148,7 +148,7 @@ void ChatService::Register(const TcpConnectionPtr &connection, json &data,
     // register failed
     json response;
     response["msgtype"] = MessageType::REGIST_MSG_ACK;
-    response["status"] = 404;
+    response["status"] = 500;
     connection->send(response.dump());
     LOG_INFO << "Register failed!";
   }
@@ -177,9 +177,11 @@ void ChatService::OneChat(const TcpConnectionPtr &connection, json &data,
   int to_id = message.toId;
   User from_user = _userModel.query(from_id);
   User to_user = _userModel.query(to_id);
+  std::string t = message.time;
 
-  LOG_INFO << "From user" << from_user.getName() << "(" << from_id << ") to "
-           << to_user.getName() << "(" << to_id << ") : " << message.message;
+  LOG_INFO << t << "From user" << from_user.getName() << "(" << from_id
+           << ") to " << to_user.getName() << "(" << to_id
+           << ") : " << message.message;
   // if the user is online, then send the message to the user
   if (to_user.getState() == "online") {
     {

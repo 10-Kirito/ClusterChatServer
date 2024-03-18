@@ -37,8 +37,9 @@ void FriendModel::insert(const Friends &friends) {
 }
 
 std::vector<User> FriendModel::query(const int &userid) {
-  std::string sql = "select u.id, u.name from Friend f join User u on "
-                    "f.friendid = u.id where userid = ?";
+  std::string sql =
+      "select u.id, u.name , u.state from Friend f join User u on "
+      "f.friendid = u.id where userid = ?";
 
   DataBase &database = DataBase::getInstance();
   std::shared_ptr<sql::PreparedStatement> pstmt(
@@ -49,7 +50,8 @@ std::vector<User> FriendModel::query(const int &userid) {
 
   DataBase::ResultPtr result = database.query(pstmt);
   while (result->next()) {
-    friends.push_back(User(result->getInt("id"), result->getString("name")));
+    friends.push_back(User(result->getInt("id"), result->getString("name"),
+                           result->getString("state")));
   }
 
   return friends;
