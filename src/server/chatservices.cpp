@@ -6,6 +6,7 @@
 #include "messagemodel.hpp"
 #include "public.hpp"
 #include "user.hpp"
+#include <iomanip>
 #include <muduo/base/Logging.h>
 #include <mutex>
 #include <vector>
@@ -43,6 +44,10 @@ ChatService::ChatService() {
        std::bind(&ChatService::DeleteGroup, this, _1, _2, _3)});
   _msgHandlerMap.insert({MessageType::QUIT_GROUP,
                          std::bind(&ChatService::QuitGroup, this, _1, _2, _3)});
+
+  _msgHandlerMap.insert(
+      {MessageType::UPDATE_USER,
+       std::bind(&ChatService::UpdateUser, this, _1, _2, _3)});
 }
 /**
  * @brief the service for user login
@@ -101,6 +106,15 @@ void ChatService::Login(const TcpConnectionPtr &connection, json &data,
       std::vector<Group> groups = _groupModel.queryGroups(user.getId());
       if (!groups.empty()) {
         response["groups"] = groups;
+        // get the user's all groups' messages
+        for (const auto &group : groups) {
+          std::vector<Message> old_group_message =
+              _messageModel.queryGroupMsg(group.getId(), user.getId());
+          if (!old_group_message.empty()) {
+            response["groupmsg"].push_back(old_group_message);
+            _messageModel.deleteGroupMsg(old_group_message);
+          }
+        }
       }
     }
   } else {
@@ -109,6 +123,36 @@ void ChatService::Login(const TcpConnectionPtr &connection, json &data,
     response["status"] = 400;
     response["errorMessage"] =
         "The password is wrong or the user is not exist!";
+  }
+  // std::cout << std::setw(4) << response;
+  connection->send(response.dump());
+}
+
+/**
+ * @brief update the user's information(friend's state)
+ *
+ * @param connection
+ * @param data
+ * @param time
+ */
+void ChatService::UpdateUser(const TcpConnectionPtr &connection, json &data,
+                             Timestamp time) {
+  int id = data["id"];
+  User user = _userModel.query(id);
+  json response;
+  // 1. get the user
+  response["msgtype"] = MessageType::UPDATE_USER_ACK;
+  response["user"] = user;
+
+  // 2. get the user's all friends
+  std::vector<User> friends = _friendModel.query(user.getId());
+  if (!friends.empty()) {
+    response["friends"] = friends;
+  }
+  // 3. get the user's all groups
+  std::vector<Group> groups = _groupModel.queryGroups(user.getId());
+  if (!groups.empty()) {
+    response["groups"] = groups;
   }
   connection->send(response.dump());
 }
@@ -210,14 +254,16 @@ void ChatService::GroupChat(const TcpConnectionPtr &connection, json &data,
                             Timestamp time) {
   /*
     {
-      "userid": id,
-      "groupid": groupid,
+      "msgtype": GROUP_MESSAGE
+      "from": id,
+      "to": groupid,
       "message": "hello, group!"
+      "time": time
     }
   */
   // 1. get the all need data from json
-  int userid = data["userid"].template get<int>();
-  int groupid = data["groupid"].template get<int>();
+  int userid = data["from"].template get<int>();
+  int groupid = data["to"].template get<int>();
   // 2. get the users in the group
   std::vector<User> users = _groupModel.query(groupid).getUsers();
   std::vector<int> user_id;
@@ -239,6 +285,7 @@ void ChatService::GroupChat(const TcpConnectionPtr &connection, json &data,
         message.toId = groupid;
         message.msgtype = MessageType::GROUP_MESSAGE;
         message.message = data["message"].template get<std::string>();
+        message.time = data["time"].template get<std::string>();
         _messageModel.insert(message);
       }
     }

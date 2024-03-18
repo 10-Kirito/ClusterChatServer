@@ -175,6 +175,7 @@ void showCurrentUserData(int, std::string) {
   cout << "current user => account:" << global_user.getId()
        << " username:" << global_user.getName() << endl;
   cout << "----------------------friend list---------------------" << endl;
+
   if (!global_userfriends_list.empty()) {
     cout << "id\t\tname\t\tstate" << endl;
     for (User &user : global_userfriends_list) {
@@ -248,16 +249,39 @@ void doLoginResponse(json &responsejs) {
       std::vector<Message> vec = responsejs["offlinemsg"];
       for (Message &message : vec) {
         // time + [id] + name + " said: " + xxx
-        if (MessageType::MESSAGE == MessageType(message.msgtype)) {
-          cout << message.time << " [" << message.fromId << "]"
-               << " said: " << message.message << endl;
-        } else {
-          cout << "group messages[" << message.fromId << "]:" << message.time
-               << " said: " << message.message << endl;
-        }
+        cout << message.time << " [" << message.fromId << "]:"
+             << " said: " << message.message << endl;
       }
     }
 
+    // display offline group message:
+    if (responsejs.contains("groupmsg")) {
+      /*
+      {
+        [
+          {
+
+          }
+        ],
+        [
+          {
+
+          }
+        ]
+      }
+      */
+      std::vector<std::vector<Message>> groupmsg = responsejs["groupmsg"];
+
+      cout << "------------------------------------------------------" << endl;
+      for (const auto &onegroup : groupmsg) {
+        cout << "group message[" << onegroup[0].toId << "]:" << endl;
+        for (const auto &message : onegroup) {
+          cout << "├──" << message.time << " [" << message.fromId << "]:"
+               << " said: " << message.message << endl;
+        }
+      }
+      cout << "------------------------------------------------------" << endl;
+    }
     global_login_status = true;
   }
 }
@@ -283,11 +307,13 @@ void readTaskHandler(int clientfd) {
       sem_post(&rwsem);
       continue;
     }
+
     if (MessageType::REGIST_MSG_ACK == msgtype) {
       doRegResponse(js);
       sem_post(&rwsem);
       continue;
     }
+
     if (MessageType::MESSAGE == msgtype) {
       Message message = js;
       cout << js["time"].get<std::string>() << " [" << js["from"] << "]"
@@ -295,16 +321,20 @@ void readTaskHandler(int clientfd) {
       continue;
     }
 
-    /* if (GROUP_CHAT_MSG == msgtype) {
-      cout << "群消息[" << js["groupid"] << "]:" << js["time"].get<string>()
-           << " [" << js["id"] << "]" << js["name"].get<string>()
-           << " said: " << js["msg"].get<string>() << endl;
+    // update the user's information
+    if (MessageType::UPDATE_USER_ACK == msgtype) {
+      global_userfriends_list.clear();
+      global_group_list.clear();
+      global_userfriends_list = js["friends"].get<std::vector<User>>();
+      global_group_list = js["groups"].get<std::vector<Group>>();
       continue;
     }
-
-
-
-     */
+    if (MessageType::GROUP_MESSAGE == msgtype) {
+      cout << "group message[" << js["to"] << "]:" << js["time"].get<string>()
+           << " from [" << js["from"] << "]"
+           << " said: " << js["message"].get<string>() << endl;
+      continue;
+    }
   }
 }
 
@@ -312,16 +342,21 @@ void readTaskHandler(int clientfd) {
 void help(int fd = 0, std::string str = "");
 // "chat" command handler
 void chat(int, std::string);
+// "groupchat" command handler
+void groupChat(int, std::string);
 // "list" command handler
 void showUsersInGroup(int, std::string);
+// "update" command handler
+void update(int, std::string);
 // the command lists
 std::unordered_map<std::string, std::string> commandMap = {
     {"quit", "\t(exit the chat)"},
     {"chat", "\t(chat with someone) usage-> `chat:friendid:message`"},
     {"groupchat", "(chat with group) usage> `groupchat:groupid:message`"},
-    {"showme", "(show my details) usage> `groupchat:groupid:message`"},
+    {"showme", "(show my details) usage> `showme`"},
     {"help", "\t(get the help list) usage-> `help`"},
-    {"list", "(get the users in the group) usge-> `list:groupid`"}
+    {"list", "(get the users in the group) usge-> `list:groupid`"},
+    {"updatelist", "(update the user's list) usage-> `updatelist`"}
    /*  {"addfriend", "add friend"},
     {"creategroup", "create group"},       {"addgroup", "add group"},
     {"groupmembers", "get group members"}, {"loginout", "login out"},
@@ -332,7 +367,9 @@ std::unordered_map<std::string, std::function<void(int, std::string)>>
                          {"chat", chat},
                          {"quit", quit},
                          {"showme", showCurrentUserData},
-                         {"list", showUsersInGroup}};
+                         {"list", showUsersInGroup},
+                         {"groupchat", groupChat},
+                         {"update", update}};
 
 void homePage(int clientfd) {
   help();
@@ -400,6 +437,30 @@ void chat(int clientfd, std::string str) {
   }
 }
 
+void groupChat(int clientfd, std::string str) {
+  // groupid:message
+  int idx = str.find(":");
+  if (-1 == idx) {
+    std::cerr << "groupchat command invalid" << endl;
+    return;
+  }
+  // get the groupid and message
+  int groupid = atoi(str.substr(0, idx).c_str());
+  std::string message = str.substr(idx + 1, str.size() - idx);
+
+  json js;
+  js["msgtype"] = MessageType::GROUP_MESSAGE;
+  js["from"] = global_user.getId();
+  js["to"] = groupid;
+  js["message"] = message;
+  js["time"] = getCurrentTime();
+  std::string buffer = js.dump();
+  int len = send(clientfd, buffer.c_str(), strlen(buffer.c_str()), 0);
+  if (-1 == len) {
+    std::cerr << "send chat msg error -> " << buffer << endl;
+  }
+}
+
 void showUsersInGroup(int clientfd, std::string str) {
   // str: groupid
   cout << "------------------------------------------------------" << endl;
@@ -419,6 +480,22 @@ void showUsersInGroup(int clientfd, std::string str) {
     }
   }
   cout << "group not found!" << endl;
+}
+
+/**
+ * @brief update the user's information
+ *
+ * @param clientfd
+ */
+void update(int clientfd, std::string) {
+  json data;
+  data["msgtype"] = MessageType::UPDATE_USER;
+  data["id"] = global_user.getId();
+  std::string buffer = data.dump();
+  int len = send(clientfd, buffer.c_str(), strlen(buffer.c_str()), 0);
+  if (-1 == len) {
+    std::cerr << "send chat msg error -> " << buffer << endl;
+  }
 }
 
 /**

@@ -36,7 +36,11 @@ enum class MessageType {
   CREATE_GROUP = 8,
   JOIN_GROUP = 9,
   DELETE_GROUP = 10,
-  QUIT_GROUP = 11
+  QUIT_GROUP = 11,
+
+  // update the user's details
+  UPDATE_USER = 12,
+  UPDATE_USER_ACK = 13,
 };
 
 

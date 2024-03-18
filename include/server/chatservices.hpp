@@ -56,7 +56,8 @@ public:
   void DeleteGroup(const TcpConnectionPtr &, json &, Timestamp);
   void JoinGroup(const TcpConnectionPtr &, json &, Timestamp);
   void QuitGroup(const TcpConnectionPtr &, json &, Timestamp);
-
+  // update the user's information
+  void UpdateUser(const TcpConnectionPtr &, json &, Timestamp);
   // get the message handler
   MessageHandler getHandler(MessageType type);
   // when the client close the connection, delete something
