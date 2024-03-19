@@ -1,6 +1,5 @@
 #include "groups/groupusermodel.hpp"
 #include "database.hpp"
-#include "groups/groupsmodel.hpp"
 #include "groups/groupuser.hpp"
 #include "public.hpp"
 #include <cppconn/exception.h>
@@ -25,12 +24,70 @@ bool GroupUserModel::insert(const GroupUser &groupUser) {
   }
 }
 
-bool GroupsModel::exist(const int &group_id) {
-  std::string sql = "select * from AllGroup where id = ?";
+/**
+ * @brief query the user in the group
+ *
+ * @param userid
+ * @param groupid
+ * @return GroupUser
+ */
+GroupUser GroupUserModel::query(int userid, int groupid) {
   DataBase &database = DataBase::getInstance();
+  std::string sql = "select * from GroupUser where userid = ? and groupid = ?";
   DataBase::PreparedStatementPtr pstmt(
       database.getConnection()->prepareStatement(sql));
-  pstmt->setInt(1, group_id);
+  pstmt->setInt(1, userid);
+  pstmt->setInt(2, groupid);
+
   DataBase::ResultPtr res(pstmt->executeQuery());
-  return res->next();
+
+  if (res->next()) {
+    GroupUser groupUser;
+    groupUser.setGroupid(res->getInt("groupid"));
+    groupUser.setUserid(res->getInt("userid"));
+    groupUser.setRole(res->getString("role"));
+    return groupUser;
+  } else {
+    return GroupUser();
+  }
+}
+
+/**
+ * @brief delete all users in the group
+ *
+ * @param groupid
+ * @return true
+ * @return false
+ */
+bool GroupUserModel::deleteAll(const int &groupid) {
+  DataBase &database = DataBase::getInstance();
+  std::string sql = "delete from GroupUser where groupid = ?";
+  DataBase::PreparedStatementPtr pstmt(
+      database.getConnection()->prepareStatement(sql));
+  pstmt->setInt(1, groupid);
+
+  bool result = pstmt->executeUpdate() > 0;
+
+  return result;
+}
+
+/**
+ * @brief delete the user from the group
+ *
+ * @param userid
+ * @param groupid
+ * @return true
+ * @return false
+ */
+bool GroupUserModel::deleteOne(const int &userid, const int &groupid) {
+  DataBase &database = DataBase::getInstance();
+  std::string sql = "delete from GroupUser where groupid = ? and userid = ?";
+  DataBase::PreparedStatementPtr pstmt(
+      database.getConnection()->prepareStatement(sql));
+  pstmt->setInt(1, groupid);
+  pstmt->setInt(2, userid);
+
+  bool result = pstmt->executeUpdate() > 0;
+
+  return result;
 }

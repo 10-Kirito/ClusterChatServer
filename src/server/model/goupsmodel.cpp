@@ -27,7 +27,15 @@ bool GroupsModel::create(Group &group) {
   return result;
 }
 // delete the group and the users in the group
-void GroupsModel::deleteGroup(int groupid) {}
+bool GroupsModel::deleteGroup(int groupid) {
+  DataBase &database = DataBase::getInstance();
+  std::string sql = "delete from AllGroup where id = ?";
+  DataBase::PreparedStatementPtr pstmt(
+      database.getConnection()->prepareStatement(sql));
+  pstmt->setInt(1, groupid);
+  bool result = pstmt->executeUpdate() > 0;
+  return result;
+}
 // just delete the user in the group
 void quitGroup(int userid, int groupid);
 // add the user to the group and set the role
@@ -55,7 +63,7 @@ std::vector<Group> GroupsModel::queryGroups(const int &userid) {
     group.setName(res->getString("groupname"));
     group.setDesc(res->getString("groupdesc"));
     // get all the users in the group
-    std::string sql1 = "select u.id, u.name, u.state from GroupUser g join "
+    std::string sql1 = "select u.id, u.name, u.state , g.role from GroupUser g join "
                        "User u on g.userid = u.id where g.groupid = ?";
     DataBase::PreparedStatementPtr pstmt1(
         database.getConnection()->prepareStatement(sql1));
@@ -67,10 +75,11 @@ std::vector<Group> GroupsModel::queryGroups(const int &userid) {
       user.setId(res1->getInt("id"));
       user.setName(res1->getString("name"));
       user.setState(res1->getString("state"));
+      user.setRole(res1->getString("role"));
       users.push_back(user);
     }
     group.setUsers(users);
-    //end get all the users in the group
+    // end get all the users in the group
     groups.push_back(group);
   }
   return groups;
@@ -111,4 +120,14 @@ Group GroupsModel::query(const int &groupid) {
   }
   group.setUsers(users);
   return group;
+}
+
+bool GroupsModel::exist(const int &group_id) {
+  std::string sql = "select * from AllGroup where id = ?";
+  DataBase &database = DataBase::getInstance();
+  DataBase::PreparedStatementPtr pstmt(
+      database.getConnection()->prepareStatement(sql));
+  pstmt->setInt(1, group_id);
+  DataBase::ResultPtr res(pstmt->executeQuery());
+  return res->next();
 }

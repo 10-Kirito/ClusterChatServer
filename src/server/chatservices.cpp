@@ -6,7 +6,6 @@
 #include "messagemodel.hpp"
 #include "public.hpp"
 #include "user.hpp"
-#include <iomanip>
 #include <muduo/base/Logging.h>
 #include <mutex>
 #include <vector>
@@ -122,7 +121,7 @@ void ChatService::Login(const TcpConnectionPtr &connection, json &data,
     response["errorMessage"] =
         "The password is wrong or the user is not exist!";
   }
-  std::cout << std::setw(4) << response;
+  // std::cout << std::setw(4) << response;
   connection->send(response.dump());
 }
 
@@ -152,6 +151,8 @@ void ChatService::UpdateUser(const TcpConnectionPtr &connection, json &data,
   if (!groups.empty()) {
     response["groups"] = groups;
   }
+  LOG_INFO << "UPDATE";
+  // std::cout << response.dump(4) <<std::endl;
   connection->send(response.dump());
 }
 
@@ -417,9 +418,85 @@ void ChatService::JoinGroup(const TcpConnectionPtr &connection, json &data,
 }
 
 void ChatService::DeleteGroup(const TcpConnectionPtr &connection, json &data,
-                              Timestamp time) {}
+                              Timestamp time) {
+  json response;
+  response["msgtype"] = MessageType::DELETE_GROUP;
+
+  // 0. get the all need data from json
+  int groupid = data["groupid"].template get<int>();
+  int userid = data["userid"].template get<int>();
+
+  GroupUser groupuser = _groupUserModel.query(userid, groupid);
+  // check the user's role, if the user's role just is normal, then return
+  if (groupuser.getRole() == "normal") {
+    response["status"] = 404;
+    response["errorMessage"] = "You don't have the permission to delete group!";
+    connection->send(response.dump());
+    return;
+  }
+
+  // 1. check the group if exist:
+  Group group = _groupModel.query(groupid);
+
+  if (group.getId() == -1) {
+    response["status"] = 404;
+    response["errorMessage"] = "The group not exist!";
+  } else {
+    if (_groupUserModel.deleteAll(groupid) &&
+        _groupModel.deleteGroup(groupid)) {
+      response["status"] = 200;
+      response["errorMessage"] = "The group delete successfully!";
+    } else {
+      response["status"] = 404;
+      response["errorMessage"] = "The group delete failed!";
+    }
+  }
+
+  connection->send(response.dump());
+}
 void ChatService::QuitGroup(const TcpConnectionPtr &connection, json &data,
-                            Timestamp time) {}
+                            Timestamp time) {
+
+  json response;
+  response["msgtype"] = MessageType::QUIT_GROUP;
+  // 0. get the all need data from json
+  int userid = data["userid"].template get<int>();
+  int groupid = data["groupid"].template get<int>();
+  // 1. first check the user's role who want quit group
+  GroupUser groupuser = _groupUserModel.query(userid, groupid);
+  if (groupuser.getUserid() == -1 || groupuser.getGroupid() == -1) {
+    response["status"] = 404;
+    response["errorMessage"] =
+        "The group not exist or you already exist the group!";
+
+    connection->send(response.dump());
+    return;
+  }
+  // 2. if the user is the creator, then delete the group and the groupuser
+  if (groupuser.getRole() == "creator") {
+    // delete the group and the groupusers in it
+    bool deleteusers = _groupUserModel.deleteAll(groupuser.getGroupid());
+    bool deltegroup = _groupModel.deleteGroup(groupuser.getGroupid());
+    if (deleteusers && deltegroup) {
+      response["status"] = 200;
+      response["errorMessage"] = "The group quit successfully!";
+    } else {
+      response["status"] = 500;
+      response["errorMessage"] = "The group delete failed!";
+    }
+  } else {
+    bool deleteuser = _groupUserModel.deleteOne(userid, groupid);
+    if (deleteuser) {
+      response["status"] = 200;
+      response["errorMessage"] = "The group quit successfully!";
+    } else {
+      response["status"] = 500;
+      response["errorMessage"] = "The group user delete failed!";
+    }
+  }
+
+  connection->send(response.dump());
+}
 
 /**
  * @brief get the message handler

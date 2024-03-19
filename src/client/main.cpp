@@ -17,6 +17,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <functional>
+#include <iomanip>
 #include <iostream>
 #include <json.hpp>
 #include <netinet/in.h>
@@ -171,27 +172,37 @@ void quit(int clientfd, std::string str) {
 // display the current user's information
 void showCurrentUserData(int, std::string) {
   cout << endl;
-  cout << "----------------------login user---------------------" << endl;
+  cout << "--------------------------------login "
+          "user-------------------------------"
+       << endl;
   cout << "current user => account:" << global_user.getId()
        << " username:" << global_user.getName() << endl;
-  cout << "----------------------friend list---------------------" << endl;
+  cout << "--------------------------------friend "
+          "list------------------------------"
+       << endl;
 
   if (!global_userfriends_list.empty()) {
-    cout << "id\t\tname\t\tstate" << endl;
+    cout << std::setw(10) << "ID" << std::setw(20) << "NAME" << std::setw(40)
+         << "STATE" << endl;
     for (User &user : global_userfriends_list) {
-      cout << user.getId() << "\t\t" << user.getName() << "\t\t"
-           << user.getState() << endl;
+      cout << std::setw(10) << user.getId() << std::setw(20) << user.getName()
+           << std::setw(40) << user.getState() << endl;
     }
   }
-  cout << "----------------------group list----------------------" << endl;
+  cout << "--------------------------------group "
+          "list--------------------------------"
+       << endl;
   if (!global_group_list.empty()) {
-    cout << "id\t\tname\t\t\tdesc" << endl;
+    cout << std::setw(10) << "ID" << std::setw(20) << "NAME" << std::setw(40)
+         << "DESC" << endl;
     for (Group &group : global_group_list) {
-      cout << group.getId() << "\t\t" << group.getName() << "\t\t\t"
-           << group.getDesc() << endl;
+      cout << std::setw(10) << group.getId() << std::setw(20) << group.getName()
+           << std::setw(40) << group.getDesc() << endl;
     }
   }
-  cout << "------------------------------------------------------" << endl;
+  cout << "--------------------------------------------------------------------"
+          "------"
+       << endl;
   cout << "Type `help` to see other commands." << endl;
 }
 
@@ -240,7 +251,6 @@ void doLoginResponse(json &responsejs) {
       global_group_list =
           responsejs["groups"].template get<std::vector<Group>>();
     }
-
     // display the user's information
     showCurrentUserData(1, "");
 
@@ -291,6 +301,7 @@ void readTaskHandler(int clientfd) {
     // block here to reveive the data from server
     int len = recv(clientfd, buffer, 4096, 0);
     if (-1 == len || 0 == len) {
+      cout << "error";
       close(clientfd);
       exit(-1);
     }
@@ -329,6 +340,7 @@ void readTaskHandler(int clientfd) {
         global_group_list = js["groups"].get<std::vector<Group>>();
 
       cout << "Type `help` to see other commands." << endl;
+      cout << "->";
       continue;
     }
     if (MessageType::GROUP_MESSAGE == msgtype) {
@@ -348,13 +360,23 @@ void readTaskHandler(int clientfd) {
       } else {
         cout << "create the group failed!" << endl;
       }
-      homePage(clientfd);
+      cout << "Type `help` to see other commands." << endl;
+      cout << "->";
+      continue;
+    }
+
+    if (MessageType::DELETE_GROUP == msgtype) {
+      cout << "status: " << js["status"].get<int>()
+           << js["errorMessage"].get<std::string>() << endl;
+      cout << "Type `help` to see other commands." << endl;
+      cout << "->";
       continue;
     }
 
     if (MessageType::ADD_FRIENDS == msgtype) {
       cout << "add friend successfully" << endl;
-      homePage(clientfd);
+      cout << "Type `help` to see other commands." << endl;
+      cout << "->";
       continue;
     }
 
@@ -367,7 +389,17 @@ void readTaskHandler(int clientfd) {
       } else {
         cout << "the group doesn't exist" << endl;
       }
-      homePage(clientfd);
+      cout << "Type `help` to see other commands." << endl;
+      cout << "->";
+      continue;
+    }
+
+    if (MessageType::QUIT_GROUP == msgtype) {
+      int status = js["status"].get<int>();
+      cout << "status: " << status << " "
+           << js["errorMessage"].get<std::string>() << endl;
+      cout << "Type `help` to see other commands." << endl;
+      cout << "->";
       continue;
     }
   }
@@ -387,7 +419,9 @@ void update(int, std::string);
 void addFriend(int, std::string);
 // "creategroup" command handler
 void createGroup(int, std::string);
+void deleteGroup(int, std::string);
 void joinGroup(int, std::string);
+void quitGroup(int, std::string);
 // the command lists
 std::unordered_map<std::string, std::string> commandMap = {
     {"quit", "\t(exit the chat)"},
@@ -396,6 +430,8 @@ std::unordered_map<std::string, std::string> commandMap = {
     {"groupchat", "(chat with group) usage> `groupchat:groupid:message`"},
     {"chat", "\t(chat with someone) usage-> `chat:friendid:message`"},
     {"joingroup", "(create group) uage-> `joingroup:groupid`"},
+    {"quitgroup", "(quit group) uage-> `quitgroup:groupid`"},
+    {"deletegroup", "(delete group) uage-> `deletegroup:groupid`"},
     {"creategroup",
      "(create group) usage -> `creategroup:groupname:groupdesc`"},
     {"list", "(get the users in the group) usge-> `list:groupid`"},
@@ -413,6 +449,8 @@ std::unordered_map<std::string, std::function<void(int, std::string)>>
                          {"updatelist", update},
                          {"addfriend", addFriend},
                          {"creategroup", createGroup},
+                         {"deletegroup", deleteGroup},
+                         {"quitgroup", quitGroup},
                          {"joingroup", joinGroup}};
 
 void homePage(int clientfd) {
@@ -508,18 +546,24 @@ void groupChat(int clientfd, std::string str) {
 
 void showUsersInGroup(int clientfd, std::string str) {
   // str: groupid
-  cout << "------------------------------------------------------" << endl;
+  cout << "--------------------------------------------------------------------"
+          "---"
+       << endl;
   int groupid = atoi(str.c_str());
   for (const auto &group : global_group_list) {
     if (group.getId() == groupid) {
       cout << "group: " << group.getName()
            << " has the following members: " << endl;
-      cout << "id\t\tname\t\tstate" << endl;
+      cout << std::setw(10) << "id" << std::setw(20) << "name" << std::setw(20)
+           << "state" << std::setw(20) << "role" << endl;
       for (const auto &user : group.getUsers()) {
-        cout << user.getId() << "\t\t" << user.getName() << "\t\t"
-             << user.getState() << endl;
+        cout << std::setw(10) << user.getId() << std::setw(20) << user.getName()
+             << std::setw(20) << user.getState() << std::setw(20)
+             << user.getRole() << endl;
       }
-      cout << "------------------------------------------------------" << endl;
+      cout << "----------------------------------------------------------------"
+              "----"
+           << endl;
       cout << "Type `help` to see other commands." << endl;
       return;
     }
@@ -592,6 +636,20 @@ void createGroup(int clientfd, std::string str) {
   }
 }
 
+void deleteGroup(int clientfd, std::string str) {
+  // str: groupid
+  json data;
+  data["msgtype"] = MessageType::DELETE_GROUP;
+  data["userid"] = global_user.getId();
+  data["groupid"] = atoi(str.c_str());
+
+  std::string buffer = data.dump();
+  int len = send(clientfd, buffer.c_str(), strlen(buffer.c_str()), 0);
+  if (-1 == len) {
+    std::cerr << "send chat msg error -> " << buffer << endl;
+  }
+}
+
 /**
  * @brief join the group
  *
@@ -602,6 +660,20 @@ void joinGroup(int clientfd, std::string str) {
   // str: groupid
   json data;
   data["msgtype"] = MessageType::JOIN_GROUP;
+  data["userid"] = global_user.getId();
+  data["groupid"] = atoi(str.c_str());
+
+  std::string buffer = data.dump();
+  int len = send(clientfd, buffer.c_str(), strlen(buffer.c_str()), 0);
+  if (-1 == len) {
+    std::cerr << "send chat msg error -> " << buffer << endl;
+  }
+}
+
+void quitGroup(int clientfd, std::string str) {
+  // str: groupid
+  json data;
+  data["msgtype"] = MessageType::QUIT_GROUP;
   data["userid"] = global_user.getId();
   data["groupid"] = atoi(str.c_str());
 
