@@ -28,6 +28,7 @@
 #include <thread>
 #include <unistd.h>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 using std::cin;
@@ -423,20 +424,22 @@ void deleteGroup(int, std::string);
 void joinGroup(int, std::string);
 void quitGroup(int, std::string);
 // the command lists
-std::unordered_map<std::string, std::string> commandMap = {
-    {"quit", "\t(exit the chat)"},
-    {"help", "\t(get the help list) usage-> `help`"},
-    {"updatelist", "(update the user's list) usage-> `updatelist`"},
-    {"groupchat", "(chat with group) usage> `groupchat:groupid:message`"},
-    {"chat", "\t(chat with someone) usage-> `chat:friendid:message`"},
-    {"joingroup", "(create group) uage-> `joingroup:groupid`"},
-    {"quitgroup", "(quit group) uage-> `quitgroup:groupid`"},
-    {"deletegroup", "(delete group) uage-> `deletegroup:groupid`"},
-    {"creategroup",
-     "(create group) usage -> `creategroup:groupname:groupdesc`"},
-    {"list", "(get the users in the group) usge-> `list:groupid`"},
-    {"addfriend", "(add friend) usage-> `addfriend:friendid`"},
-    {"showme", "(show my details) usage> `showme`"},
+std::unordered_map<std::string, std::pair<std::string, std::string>>
+    commandMap = {
+        {"quit", {"(exit the chat)", "usage-> `quit`"}},
+        {"help", {"(get the help list)", "usage-> `help`"}},
+        {"updatelist", {"(update the user's list)", "usage-> `updatelist`"}},
+        {"groupchat",
+         {"(chat with group)", "usage-> `groupchat:groupid:message`"}},
+        {"chat", {"(chat with someone)", "usage-> `chat:friendid:message`"}},
+        {"joingroup", {"(create group)", "uage-> `joingroup:groupid`"}},
+        {"quitgroup", {"(quit group)", "uage-> `quitgroup:groupid`"}},
+        {"deletegroup", {"(delete group)", "uage-> `deletegroup:groupid`"}},
+        {"creategroup",
+         {"(create group)", "usage-> `creategroup:groupname:groupdesc`"}},
+        {"list", {"(get the users in the group)", "usge-> `list:groupid`"}},
+        {"addfriend", {"(add friend)", "usage-> `addfriend:friendid`"}},
+        {"showme", {"(show my details)", "usage-> `showme`"}},
 };
 
 std::unordered_map<std::string, std::function<void(int, std::string)>>
@@ -483,7 +486,9 @@ void help(int, std::string) {
   cout << endl;
   cout << "->show command list" << endl;
   for (auto &p : commandMap) {
-    cout << p.first << " : \t" << p.second << endl;
+    cout << std::setw(15) << std::left << p.first << " : " << std::setw(30)
+         << std::left << p.second.first << std::setw(30) << std::left<< p.second.second
+         << endl;
   }
   cout << endl;
 }
