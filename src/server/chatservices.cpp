@@ -6,6 +6,7 @@
 #include "messagemodel.hpp"
 #include "public.hpp"
 #include "user.hpp"
+#include <cstdint>
 #include <muduo/base/Logging.h>
 #include <mutex>
 #include <vector>
@@ -47,6 +48,11 @@ ChatService::ChatService() {
   _msgHandlerMap.insert(
       {MessageType::UPDATE_USER,
        std::bind(&ChatService::UpdateUser, this, _1, _2, _3)});
+
+  if (_redis.connect()) {
+    _redis.initNotifyHandler(
+        std::bind(&ChatService::handleRedisSubscribeMessage, this, _1, _2));
+  }
 }
 /**
  * @brief the service for user login
@@ -82,6 +88,9 @@ void ChatService::Login(const TcpConnectionPtr &connection, json &data,
       }
       // begin to send the message to the user
       LOG_INFO << "Login successful!";
+
+      _redis.subscribe(id);
+
       user.setState("online");
       _userModel.update(user);
       response["status"] = 200;
@@ -229,8 +238,15 @@ void ChatService::OneChat(const TcpConnectionPtr &connection, json &data,
   if (to_user.getState() == "online") {
     {
       std::lock_guard<std::mutex> lock(_mutex);
-      const TcpConnectionPtr &to_conn = _userConnMap[to_id];
-      to_conn->send(data.dump());
+
+      auto it = _userConnMap.find(to_id);
+      // if the target user doesn't exist in the same server, then send the data
+      // to redis message queue
+      if (it != _userConnMap.end()) {
+        it->second->send(data.dump());
+      } else {
+        _redis.publish(to_id, data.dump());
+      }
     }
     LOG_INFO << "Send message to " << to_user.getName() << " successfully!";
   } else {
@@ -269,16 +285,23 @@ void ChatService::GroupChat(const TcpConnectionPtr &connection, json &data,
   for (auto &user : users) {
     user_id.push_back(user.getId());
   }
-
-  // 3. send the message to the users in the group
-  std::lock_guard<std::mutex> lock(_mutex);
-  for (auto &id : user_id) {
-    if (id != userid) {
-      auto it = _userConnMap.find(id);
-      if (it != _userConnMap.end()) {
-        _userConnMap[id]->send(data.dump());
+  // consider the different server problem:
+  for (const auto &user : users) {
+    // if the user is "online", then the user is in the same server or the
+    // another server
+    if (user.getId() != userid) {
+      if (user.getState() == "online") {
+        std::lock_guard<std::mutex> lock(_mutex);
+        auto it = _userConnMap.find(user.getId());
+        // if the user located in the same server
+        if (it != _userConnMap.end()) {
+          _userConnMap[user.getId()]->send(data.dump());
+        } else {
+          // if the user doesn't exist the same server
+          _redis.publish(user.getId(), data.dump());
+        }
       } else {
-        // store the message into the database
+        // the user doesn't online, store the message into the database
         Message message;
         message.fromId = userid;
         message.toId = groupid;
@@ -527,6 +550,9 @@ void ChatService::clientCloseException(const TcpConnectionPtr &connection) {
   User user = _userModel.query(id);
   // if the user already login:
   if (user.getId() != -1) {
+    // user loginout:
+    _redis.unsubscribe(id);
+
     user.setState("offline");
     _userModel.update(user);
   }
@@ -536,4 +562,17 @@ void ChatService::clientCloseException(const TcpConnectionPtr &connection) {
     _userConnMap.erase(id);
     _userMap.erase(connection);
   }
+}
+
+void ChatService::handleRedisSubscribeMessage(int userid, std::string msg) {
+  std::lock_guard<std::mutex> lock(_mutex);
+  auto it = _userConnMap.find(userid);
+  if (it != _userConnMap.end()) {
+    it->second->send(msg);
+    return;
+  }
+
+  json data = json::parse(msg);
+  Message message = data;
+  _messageModel.insert(message);
 }

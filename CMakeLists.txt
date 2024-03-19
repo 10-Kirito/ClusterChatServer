@@ -14,6 +14,7 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 # set the search path of header files
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_SOURCE_DIR}/include/server)
+include_directories(${PROJECT_SOURCE_DIR}/include/server/redis)
 include_directories(${PROJECT_SOURCE_DIR}/include/server/models)
 include_directories(${PROJECT_SOURCE_DIR}/include/server/models/user)
 include_directories(${PROJECT_SOURCE_DIR}/include/server/models/friends)

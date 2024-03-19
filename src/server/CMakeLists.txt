@@ -4,10 +4,11 @@ add_subdirectory(model)
 
 # include all files in the current directory
 aux_source_directory(. SRC_LIST)
+aux_source_directory(./redis REDIS_LIST)
 # add the executable
-add_executable(${TARGET} ${SRC_LIST})
+add_executable(${TARGET} ${SRC_LIST} ${REDIS_LIST})
 # link muduo libraries
-target_link_libraries(${TARGET} muduo_net muduo_base pthread)
+target_link_libraries(${TARGET} muduo_net muduo_base pthread hiredis)
 # link tools library
 target_link_libraries(${TARGET} tools)
 # link model library

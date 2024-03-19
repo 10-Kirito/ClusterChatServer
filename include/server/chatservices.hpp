@@ -7,13 +7,15 @@
 #include <muduo/net/Callbacks.h>     // TcpConnectionPtr
 #include <muduo/net/TcpConnection.h> // TcpConnectionPtr
 #include <mutex>                     // mutex
-#include <unordered_map>             // unordered_map
+#include <string>
+#include <unordered_map> // unordered_map
 
 #include "friends/friendsmodel.hpp" // FriendsModel
 #include "groups/groupsmodel.hpp"
 #include "groups/groupusermodel.hpp"
 #include "messagemodel.hpp"
-#include "public.hpp"            // MessageType
+#include "public.hpp" // MessageType
+#include "redis.hpp"
 #include "singletontemplate.hpp" // SingletonTemplate
 #include "usermodel.hpp"         // UserModel
 
@@ -62,6 +64,8 @@ public:
   MessageHandler getHandler(MessageType type);
   // when the client close the connection, delete something
   void clientCloseException(const TcpConnectionPtr &connection);
+  // redis subscribe message
+  void handleRedisSubscribeMessage(int, std::string);
 
 private:
   ChatService();
@@ -77,6 +81,8 @@ private:
   GroupsModel _groupModel;
   GroupUserModel _groupUserModel;
   std::mutex _mutex;
+
+  Redis _redis;
 };
 
 #endif // CHATSERVICES_H
